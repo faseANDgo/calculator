@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="pl">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>StreamBox — TV na żywo, Filmy i Seriale</title>
+        <link rel="stylesheet" href="style.css" />
+        <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.15/dist/hls.min.js"></script>
+    </head>
+    <body>
+        <header class="topbar">
+            <div class="brand">
+                <span class="brand-icon">▶</span>
+                <span>StreamBox</span>
+            </div>
+            <nav class="tabs">
+                <button class="tab-btn active" data-tab="live">Na żywo</button>
+                <button class="tab-btn" data-tab="movies">Filmy</button>
+                <button class="tab-btn" data-tab="series">Seriale</button>
+                <button class="tab-btn" data-tab="favorites">Ulubione</button>
+            </nav>
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="Szukaj..." />
+            </div>
+        </header>
+
+        <main>
+            <!-- LIVE TV -->
+            <section id="view-live" class="view active">
+                <div class="live-layout">
+                    <div class="player-wrap">
+                        <video id="livePlayer" controls autoplay muted playsinline></video>
+                        <div class="live-info">
+                            <span class="live-badge">● NA ŻYWO</span>
+                            <h2 id="liveChannelName">Wybierz kanał</h2>
+                            <p id="liveNowPlaying"></p>
+                        </div>
+                    </div>
+                    <div class="channel-list" id="channelList"></div>
+                </div>
+            </section>
+
+            <!-- MOVIES -->
+            <section id="view-movies" class="view">
+                <h1 class="section-title">Biblioteka filmów</h1>
+                <div class="grid" id="moviesGrid"></div>
+            </section>
+
+            <!-- SERIES -->
+            <section id="view-series" class="view">
+                <h1 class="section-title">Seriale</h1>
+                <div class="grid" id="seriesGrid"></div>
+            </section>
+
+            <!-- FAVORITES -->
+            <section id="view-favorites" class="view">
+                <h1 class="section-title">Ulubione</h1>
+                <div class="grid" id="favoritesGrid"></div>
+                <p id="favoritesEmpty" class="empty-msg" style="display:none">
+                    Nie masz jeszcze żadnych ulubionych pozycji. Kliknij ikonę ♡ na
+                    plakacie filmu lub serialu, aby je dodać.
+                </p>
+            </section>
+        </main>
+
+        <!-- DETAIL / PLAYER MODAL -->
+        <div id="modalOverlay" class="modal-overlay">
+            <div class="modal">
+                <button class="modal-close" id="modalClose">✕</button>
+                <div id="modalBody"></div>
+            </div>
+        </div>
+
+        <script src="data.js"></script>
+        <script src="app.js"></script>
+    </body>
+</html>
