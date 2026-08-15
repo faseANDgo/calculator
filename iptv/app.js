@@ -484,13 +484,15 @@ function formatBytes(bytes) {
 
 /* ---------- Init ---------- */
 document.addEventListener("DOMContentLoaded", () => {
+    // Podpinamy obsługę przycisków NAJPIERW, zanim spróbujemy uruchomić
+    // odtwarzacz na żywo — tak, żeby awaria startu playera (np. zablokowany
+    // CDN z hls.js) nigdy nie zablokowała reszty interfejsu.
     initTabs();
     initSearch();
     renderChannels();
     renderMovies();
     renderSeries();
     refreshClearButton();
-    playChannel(CHANNELS[0].id);
 
     document.getElementById("modalClose").addEventListener("click", closeModal);
     document.getElementById("modalOverlay").addEventListener("click", (e) => {
@@ -504,4 +506,12 @@ document.addEventListener("DOMContentLoaded", () => {
             refreshClearButton();
         }
     });
+
+    try {
+        playChannel(CHANNELS[0].id);
+    } catch (err) {
+        console.error("Nie udało się uruchomić odtwarzacza na żywo:", err);
+        document.getElementById("liveNowPlaying").innerText =
+            "Nie udało się uruchomić odtwarzacza (sprawdź konsolę przeglądarki, F12). Reszta aplikacji działa normalnie.";
+    }
 });
