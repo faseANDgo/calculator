@@ -47,28 +47,204 @@ function renderFavorites() {
     });
 }
 
+/* ---------- Custom M3U channels (localStorage) ---------- */
+function getCustomChannels() {
+    return JSON.parse(localStorage.getItem("streambox_custom_channels") || "[]");
+}
+
+function saveCustomChannels(list) {
+    localStorage.setItem("streambox_custom_channels", JSON.stringify(list));
+}
+
+function addCustomChannels(newOnes) {
+    saveCustomChannels(getCustomChannels().concat(newOnes));
+}
+
+function removeCustomChannel(id) {
+    saveCustomChannels(getCustomChannels().filter((c) => c.id !== id));
+    if (currentChannelId === id) playChannel(CHANNELS[0].id);
+    renderChannels();
+    refreshClearButton();
+}
+
+function clearCustomChannels() {
+    localStorage.removeItem("streambox_custom_channels");
+}
+
+function getAllChannels() {
+    return CHANNELS.concat(getCustomChannels());
+}
+
+function randomColor() {
+    const palette = ["#e63946", "#2a9d8f", "#f4a261", "#264653", "#9d4edd", "#457b9d", "#e76f51", "#06d6a0"];
+    return palette[Math.floor(Math.random() * palette.length)];
+}
+
+/* ---------- M3U parsing ---------- */
+function parseM3U(text) {
+    const lines = text.split(/\r?\n/);
+    const channels = [];
+    let pending = null;
+
+    lines.forEach((rawLine) => {
+        const line = rawLine.trim();
+        if (!line) return;
+
+        if (line.startsWith("#EXTINF")) {
+            const nameMatch = line.match(/,(.*)$/);
+            const logoMatch = line.match(/tvg-logo="([^"]*)"/i);
+            const groupMatch = line.match(/group-title="([^"]*)"/i);
+            pending = {
+                name: nameMatch ? nameMatch[1].trim() : "Kanał",
+                logo: logoMatch ? logoMatch[1] : null,
+                category: groupMatch && groupMatch[1] ? groupMatch[1] : "Import",
+            };
+        } else if (line.startsWith("#")) {
+            // inne tagi M3U (#EXTVLCOPT, #EXTGRP itd.) - pomijamy
+        } else {
+            if (pending) {
+                channels.push({
+                    id: "imp_" + Date.now() + "_" + channels.length,
+                    name: pending.name,
+                    category: pending.category,
+                    color: randomColor(),
+                    nowPlaying: "Kanał zaimportowany z listy M3U",
+                    streamUrl: line,
+                    logo: pending.logo,
+                });
+                pending = null;
+            }
+        }
+    });
+
+    return channels;
+}
+
+/* ---------- Import modal ---------- */
+function openImportModal() {
+    const body = document.getElementById("modalBody");
+    body.innerHTML = `
+        <h2>Dodaj listę kanałów M3U</h2>
+        <p class="description">
+            Wgraj plik playlisty (.m3u / .m3u8) albo podaj bezpośredni link do niej.
+            Plik musi być w standardowym formacie M3U/M3U8 (linie <code>#EXTINF</code> + adres strumienia).
+        </p>
+
+        <div class="import-option">
+            <label class="btn btn-secondary" style="display:inline-block">
+                📁 Wybierz plik
+                <input type="file" id="m3uFileInput" accept=".m3u,.m3u8,text/plain" style="display:none" />
+            </label>
+        </div>
+
+        <div class="import-option" style="margin-top:14px">
+            <input type="text" id="m3uUrlInput" class="url-input" placeholder="https://przyklad.pl/lista.m3u8" />
+            <button class="btn btn-secondary" id="m3uUrlLoadBtn">Pobierz z URL</button>
+        </div>
+
+        <div class="import-status" id="importStatus"></div>
+        <div id="importPreview"></div>
+    `;
+
+    document.getElementById("m3uFileInput").addEventListener("change", async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const text = await file.text();
+        handleParsedM3U(text);
+    });
+
+    document.getElementById("m3uUrlLoadBtn").addEventListener("click", async () => {
+        const url = document.getElementById("m3uUrlInput").value.trim();
+        if (!url) return;
+        const status = document.getElementById("importStatus");
+        status.innerText = "Pobieranie...";
+        try {
+            const res = await fetch(url);
+            if (!res.ok) throw new Error("HTTP " + res.status);
+            const text = await res.text();
+            handleParsedM3U(text);
+        } catch (err) {
+            status.innerText =
+                "Błąd pobierania (" + err.message + "). Serwer listy może blokować dostęp z przeglądarki (CORS) — " +
+                "spróbuj zamiast tego pobrać plik na dysk i wgrać go przyciskiem „Wybierz plik”.";
+        }
+    });
+
+    openModal();
+}
+
+function handleParsedM3U(text) {
+    const status = document.getElementById("importStatus");
+    const preview = document.getElementById("importPreview");
+    const parsed = parseM3U(text);
+
+    if (!parsed.length) {
+        status.innerText = "Nie znaleziono żadnych kanałów. Sprawdź, czy to poprawna playlista M3U.";
+        preview.innerHTML = "";
+        return;
+    }
+
+    status.innerText = `Znaleziono ${parsed.length} kanałów.`;
+    preview.innerHTML = `
+        <div class="import-list">
+            ${parsed
+                .slice(0, 8)
+                .map((c) => `<div class="import-list-item">${c.name}</div>`)
+                .join("")}
+            ${parsed.length > 8 ? `<div class="import-list-item">…i ${parsed.length - 8} więcej</div>` : ""}
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-primary" id="confirmImportBtn">Dodaj ${parsed.length} kanałów do listy</button>
+        </div>
+    `;
+
+    document.getElementById("confirmImportBtn").addEventListener("click", () => {
+        addCustomChannels(parsed);
+        closeModal();
+        renderChannels();
+        refreshClearButton();
+    });
+}
+
 /* ---------- Live TV ---------- */
 function renderChannels() {
     const list = document.getElementById("channelList");
     list.innerHTML = "";
-    CHANNELS.forEach((ch) => {
+    getAllChannels().forEach((ch) => {
         const el = document.createElement("div");
         el.className = "channel-item" + (ch.id === currentChannelId ? " active" : "");
         el.dataset.id = ch.id;
+        const isCustom = ch.id.startsWith("imp_");
         el.innerHTML = `
-            <div class="channel-logo" style="background:${ch.color}">${ch.name.charAt(0)}</div>
+            <div class="channel-logo" style="background:${ch.color}">
+                ${ch.logo ? `<img src="${ch.logo}" alt="" onerror="this.style.display='none'" />` : ch.name.charAt(0)}
+            </div>
             <div class="channel-meta">
                 <strong>${ch.name}</strong>
                 <span>${ch.category}</span>
             </div>
+            ${isCustom ? `<span class="channel-remove" data-id="${ch.id}" title="Usuń kanał">✕</span>` : ""}
         `;
         el.addEventListener("click", () => playChannel(ch.id));
+        if (isCustom) {
+            el.querySelector(".channel-remove").addEventListener("click", (e) => {
+                e.stopPropagation();
+                removeCustomChannel(ch.id);
+            });
+        }
         list.appendChild(el);
     });
 }
 
+function refreshClearButton() {
+    const btn = document.getElementById("clearImportedBtn");
+    const count = getCustomChannels().length;
+    btn.style.display = count ? "inline-block" : "none";
+    btn.innerText = `Usuń wszystkie zaimportowane kanały (${count})`;
+}
+
 function playChannel(id) {
-    const channel = CHANNELS.find((c) => c.id === id);
+    const channel = getAllChannels().find((c) => c.id === id);
     if (!channel) return;
     currentChannelId = id;
     renderChannels();
@@ -313,10 +489,19 @@ document.addEventListener("DOMContentLoaded", () => {
     renderChannels();
     renderMovies();
     renderSeries();
+    refreshClearButton();
     playChannel(CHANNELS[0].id);
 
     document.getElementById("modalClose").addEventListener("click", closeModal);
     document.getElementById("modalOverlay").addEventListener("click", (e) => {
         if (e.target.id === "modalOverlay") closeModal();
+    });
+    document.getElementById("openImportBtn").addEventListener("click", openImportModal);
+    document.getElementById("clearImportedBtn").addEventListener("click", () => {
+        if (confirm("Usunąć wszystkie zaimportowane kanały?")) {
+            clearCustomChannels();
+            renderChannels();
+            refreshClearButton();
+        }
     });
 });
