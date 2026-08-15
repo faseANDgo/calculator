@@ -1,56 +1,13 @@
 /*
- * Katalog demo. Kanały „na żywo" korzystają z publicznych, ogólnodostępnych
- * strumieni testowych (Apple / Mux) używanych powszechnie do testowania
- * odtwarzaczy HLS. Filmy i seriale korzystają z produkcji Blender Foundation
+ * Kanały „na żywo" nie są tu wpisane na stałe — użytkownik dodaje je sam
+ * przez „+ Dodaj listę M3U" w aplikacji (wgranie pliku .m3u/.m3u8 lub link).
+ * Nic się nie ładuje ani nie odtwarza, dopóki taka lista nie zostanie dodana.
+ * Zaimportowane kanały są przechowywane w localStorage (patrz app.js).
+ *
+ * Filmy i seriale poniżej korzystają z produkcji Blender Foundation
  * (CC BY, domena otwarta) oraz oficjalnych plików demo Google — wszystkie
  * są legalne do odtwarzania i pobierania.
  */
-
-const CHANNELS = [
-    {
-        id: "ch1",
-        name: "StreamBox Film",
-        category: "Film",
-        color: "#e63946",
-        nowPlaying: "Blok filmowy: kino akcji",
-        streamUrl:
-            "https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_16x9/bipbop_16x9_variant.m3u8",
-    },
-    {
-        id: "ch2",
-        name: "StreamBox Sport",
-        category: "Sport",
-        color: "#2a9d8f",
-        nowPlaying: "Studio sportowe na żywo",
-        streamUrl: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8",
-    },
-    {
-        id: "ch3",
-        name: "StreamBox Kids",
-        category: "Dzieci",
-        color: "#f4a261",
-        nowPlaying: "Poranek z bajkami",
-        streamUrl:
-            "https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_4x3/bipbop_4x3_variant.m3u8",
-    },
-    {
-        id: "ch4",
-        name: "StreamBox News",
-        category: "Informacje",
-        color: "#264653",
-        nowPlaying: "Serwis informacyjny",
-        streamUrl: "https://test-streams.mux.dev/pts_shift/master.m3u8",
-    },
-    {
-        id: "ch5",
-        name: "StreamBox Muzyka",
-        category: "Muzyka",
-        color: "#9d4edd",
-        nowPlaying: "Lista przebojów",
-        streamUrl:
-            "https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8",
-    },
-];
 
 const MOVIES = [
     {

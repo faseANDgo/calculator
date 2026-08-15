@@ -318,6 +318,18 @@ main {
     font-size: 13px;
 }
 
+.channel-empty {
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    padding: 24px 16px;
+    text-align: center;
+    color: var(--text-dim);
+}
+
+.channel-empty p {
+    margin: 0 0 14px;
+}
+
 /* ---------- Grid / Cards ---------- */
 .grid {
     display: grid;

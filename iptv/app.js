@@ -62,7 +62,14 @@ function addCustomChannels(newOnes) {
 
 function removeCustomChannel(id) {
     saveCustomChannels(getCustomChannels().filter((c) => c.id !== id));
-    if (currentChannelId === id) playChannel(CHANNELS[0].id);
+    if (currentChannelId === id) {
+        const remaining = getAllChannels();
+        if (remaining.length) {
+            playChannel(remaining[0].id);
+        } else {
+            showEmptyLiveState();
+        }
+    }
     renderChannels();
     refreshClearButton();
 }
@@ -71,8 +78,10 @@ function clearCustomChannels() {
     localStorage.removeItem("streambox_custom_channels");
 }
 
+// Kanały na żywo pochodzą wyłącznie z zaimportowanej listy M3U użytkownika —
+// nic nie jest odtwarzane ani ładowane, dopóki lista nie zostanie wgrana.
 function getAllChannels() {
-    return CHANNELS.concat(getCustomChannels());
+    return getCustomChannels();
 }
 
 function randomColor() {
@@ -199,10 +208,18 @@ function handleParsedM3U(text) {
     `;
 
     document.getElementById("confirmImportBtn").addEventListener("click", () => {
+        const hadNoChannels = getCustomChannels().length === 0;
         addCustomChannels(parsed);
         closeModal();
         renderChannels();
         refreshClearButton();
+        if (hadNoChannels && parsed.length) {
+            try {
+                playChannel(parsed[0].id);
+            } catch (err) {
+                console.error("Nie udało się uruchomić odtwarzacza:", err);
+            }
+        }
     });
 }
 
@@ -210,7 +227,20 @@ function handleParsedM3U(text) {
 function renderChannels() {
     const list = document.getElementById("channelList");
     list.innerHTML = "";
-    getAllChannels().forEach((ch) => {
+    const channels = getAllChannels();
+
+    if (!channels.length) {
+        list.innerHTML = `
+            <div class="channel-empty">
+                <p>Nie masz jeszcze żadnych kanałów.</p>
+                <button class="btn btn-primary" id="emptyImportBtn">+ Dodaj listę M3U</button>
+            </div>
+        `;
+        list.querySelector("#emptyImportBtn").addEventListener("click", openImportModal);
+        return;
+    }
+
+    channels.forEach((ch) => {
         const el = document.createElement("div");
         el.className = "channel-item" + (ch.id === currentChannelId ? " active" : "");
         el.dataset.id = ch.id;
@@ -273,6 +303,20 @@ function playChannel(id) {
         document.getElementById("liveNowPlaying").innerText =
             "Twoja przeglądarka nie obsługuje odtwarzania strumieni HLS.";
     }
+}
+
+function showEmptyLiveState() {
+    if (hlsInstance) {
+        hlsInstance.destroy();
+        hlsInstance = null;
+    }
+    currentChannelId = null;
+    const video = document.getElementById("livePlayer");
+    video.removeAttribute("src");
+    video.load();
+    document.getElementById("liveChannelName").innerText = "Brak kanałów";
+    document.getElementById("liveNowPlaying").innerText =
+        "Dodaj listę M3U, aby rozpocząć oglądanie — do tego czasu nic nie jest ładowane ani odtwarzane.";
 }
 
 /* ---------- Cards (movies / series) ---------- */
@@ -504,14 +548,23 @@ document.addEventListener("DOMContentLoaded", () => {
             clearCustomChannels();
             renderChannels();
             refreshClearButton();
+            showEmptyLiveState();
         }
     });
 
-    try {
-        playChannel(CHANNELS[0].id);
-    } catch (err) {
-        console.error("Nie udało się uruchomić odtwarzacza na żywo:", err);
-        document.getElementById("liveNowPlaying").innerText =
-            "Nie udało się uruchomić odtwarzacza (sprawdź konsolę przeglądarki, F12). Reszta aplikacji działa normalnie.";
+    // Nic nie jest ładowane ani odtwarzane, dopóki użytkownik sam nie doda
+    // listy M3U (przycisk "+ Dodaj listę M3U") albo listy zapisanej wcześniej
+    // w localStorage nie ma jeszcze zawartości.
+    const channels = getAllChannels();
+    if (channels.length) {
+        try {
+            playChannel(channels[0].id);
+        } catch (err) {
+            console.error("Nie udało się uruchomić odtwarzacza na żywo:", err);
+            document.getElementById("liveNowPlaying").innerText =
+                "Nie udało się uruchomić odtwarzacza (sprawdź konsolę przeglądarki, F12).";
+        }
+    } else {
+        showEmptyLiveState();
     }
 });
