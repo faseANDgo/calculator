@@ -972,8 +972,9 @@
                 body.innerHTML = `
                     <h2>Dodaj listę kanałów M3U</h2>
                     <p class="description">
-                        Wgraj plik playlisty (.m3u / .m3u8) albo podaj bezpośredni link do niej.
-                        Plik musi być w standardowym formacie M3U/M3U8 (linie <code>#EXTINF</code> + adres strumienia).
+                        Wgraj plik playlisty (.m3u / .m3u8), podaj bezpośredni link do niej, albo wklej
+                        jej zawartość jako tekst. Format musi być standardowym M3U/M3U8
+                        (linie <code>#EXTINF</code> + adres strumienia).
                     </p>
 
                     <div class="import-option">
@@ -986,6 +987,17 @@
                     <div class="import-option" style="margin-top:14px">
                         <input type="text" id="m3uUrlInput" class="url-input" placeholder="https://przyklad.pl/lista.m3u8" />
                         <button class="btn btn-secondary" id="m3uUrlLoadBtn">Pobierz z URL</button>
+                    </div>
+
+                    <div class="import-option" style="margin-top:14px; flex-direction:column; align-items:stretch;">
+                        <label style="font-size:13px; color:var(--text-dim); margin-bottom:6px">
+                            Albo wklej tu całą zawartość listy (skopiowaną np. z otwartego linku):
+                        </label>
+                        <textarea id="m3uPasteInput" class="url-input" rows="6" style="resize:vertical; font-family:monospace; font-size:12px"
+                            placeholder="#EXTM3U
+#EXTINF:-1,Nazwa kanału
+http://przyklad.pl/strumien.m3u8"></textarea>
+                        <button class="btn btn-secondary" id="m3uPasteLoadBtn" style="margin-top:8px">Wczytaj wklejony tekst</button>
                     </div>
 
                     <div class="import-status" id="importStatus"></div>
@@ -1012,8 +1024,14 @@
                     } catch (err) {
                         status.innerText =
                             "Błąd pobierania (" + err.message + "). Serwer listy może blokować dostęp z przeglądarki (CORS) — " +
-                            "spróbuj zamiast tego pobrać plik na dysk i wgrać go przyciskiem „Wybierz plik”.";
+                            "otwórz link w przeglądarce, zaznacz i skopiuj całą treść, a potem wklej ją poniżej w polu tekstowym.";
                     }
+                });
+
+                document.getElementById("m3uPasteLoadBtn").addEventListener("click", () => {
+                    const text = document.getElementById("m3uPasteInput").value;
+                    if (!text.trim()) return;
+                    handleParsedM3U(text);
                 });
 
                 openModal();
